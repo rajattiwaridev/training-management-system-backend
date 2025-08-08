@@ -1,0 +1,4 @@
+@echo off
+cd /d "D:\Rajat\Projects\Electron\hotel-booking-system\server"
+nvm use 18.20.8
+"C:\Users\hp\AppData\Local\nvm\v18.20.8\node.exe" index.js
