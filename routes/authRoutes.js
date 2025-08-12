@@ -44,6 +44,7 @@ const {
   getSingleEmployee,
   getEmployeeByDesignation,
   toggleEmployeeStatus,
+  resetPasswordMessageEmployee,
 } = require("../controllers/employeesController");
 const {
   addState,
@@ -168,6 +169,7 @@ router.get(
   getEmployeeByDesignation
 );
 router.get("/employees/status/:id", authMiddleware, toggleEmployeeStatus);
+router.get("/employees/reset-password/:id", authMiddleware, resetPasswordMessageEmployee);
 
 //Training Routes
 router.post("/trainings/:id", authMiddleware, createTraining);
