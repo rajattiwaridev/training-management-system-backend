@@ -2,8 +2,10 @@
 const { trainingEmitter, employeeEmitter } = require("../emitter/eventEmitter");
 const TrainingAttendance = require("../models/TrainingAttendance");
 const https = require("https");
+const crypto = require("crypto");
+const Feedback = require("../models/Feedback");
 // Training events
-trainingEmitter.on("trainingComplete", async (trainingId) => {
+trainingEmitter.on("trainingCompleted", async (trainingId) => {
   console.log("Training completed:", trainingId);
   try {
     const getTrainingAttendance = await TrainingAttendance.find({
@@ -18,10 +20,26 @@ trainingEmitter.on("trainingComplete", async (trainingId) => {
     }
     const baseUrl = "https://smsgw.sms.gov.in/failsafe/MLink";
     for (const attendance of getTrainingAttendance) {
+      const token = crypto.randomBytes(16).toString("hex");
+      const expiration = new Date();
+      expiration.setDate(expiration.getDate() + 7);
+      const feedbackUrl = `cgtransport.gov.in/training/feedback?token=${token}`;
+      const body = {
+        trainingId: trainingId,
+        name: attendance.name,
+        mobile: attendance.mobile,
+        trainerRating: 0,
+        contentRating: 0,
+        suggestions: "",
+        token: token,
+        feedbackLink: feedbackUrl,
+      };
+      const feedback = new Feedback(body);
+      await feedback.save();
       const queryParams = {
         username: "cgtc.sms",
         pin: "Qwer@123", // Use RAW password without encoding
-        message: `Dear ${attendance.employeeName}, Your Training Session has ended. It is requested to provide feedback here at : https://cgtransport.gov.in. Your feedback helps us improve and serve you better. - CGTRANSPORT`,
+        message: `Dear ${attendance.name}, Your Training Session has ended. It is requested to provide feedback here at : ${feedbackUrl}. Your feedback helps us improve and serve you better. - CGTRANSPORT`,
         mnumber: `91${attendance.mobile}`,
         signature: "TRPTCG",
         dlt_entity_id: "1401495300000048678",
@@ -38,7 +56,6 @@ trainingEmitter.on("trainingComplete", async (trainingId) => {
         })
         .join("&");
       const url = `${baseUrl}?${queryString}`;
-      console.log(url);
       await new Promise((resolve, reject) => {
         https
           .get(url, { rejectUnauthorized: false }, (res) => {
@@ -71,7 +88,7 @@ employeeEmitter.on(
   "employeeRegisterationMessage",
   async (employee, password) => {
     // console.log(mobile, username, password);
-    const loginUrl = "https://cgtransport.gov.in/training";
+    const loginUrl = "cgtransport.gov.in/training";
     const baseUrl = "https://smsgw.sms.gov.in/failsafe/MLink";
 
     // Query parameters
