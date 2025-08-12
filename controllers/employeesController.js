@@ -3,6 +3,7 @@ const Employee = require("../models/employees");
 const { generatePassword } = require("../utils/passwordGenerator");
 const crypto = require("crypto");
 
+const { employeeEmitter } = require("../emitter/eventEmitter");
 // Generates a random alphanumeric string of given length
 function generateRandomAlphaNumeric(length) {
   const chars =
@@ -23,7 +24,9 @@ const addEmployees = async (req, res) => {
       return res.status(400).json({ message: "District not found" });
     }
     if (district.division.toString() !== req.body.division) {
-      return res.status(400).json({ message: "Invalid district-division mapping" });
+      return res
+        .status(400)
+        .json({ message: "Invalid district-division mapping" });
     }
     const generateString = generateRandomAlphaNumeric(8);
     const password = generatePassword(generateString);
@@ -33,6 +36,8 @@ const addEmployees = async (req, res) => {
     const employee = await Employee.findById(newEmployee._id)
       .populate("division", "name")
       .populate("district", "districtNameEng");
+    // Emit an event for employee registration
+    employeeEmitter.emit("employeeRegisterationMessage", employee, generateString);
     res.status(201).json(employee);
   } catch (error) {
     if (error.code === 11000) {
@@ -70,7 +75,9 @@ const updateEmployee = async (req, res) => {
       if (!district) {
         return res.status(400).json({ message: "District not found" });
       }
-      if (district.division.toString() !== existingEmployee.division.toString()) {
+      if (
+        district.division.toString() !== existingEmployee.division.toString()
+      ) {
         return res.status(400).json({
           message: "Invalid district-division mapping",
           details: `The selected district doesn't belong to the employee's current division`,
@@ -162,6 +169,31 @@ const toggleEmployeeStatus = async (req, res) => {
   }
 };
 
+const resetPasswordMessageEmployee = async (req,res) => {
+  try {
+    const id  = req.params.id;
+    console.log(id);
+    const getEmployee = await Employee.findById(id);
+    console.log(getEmployee);
+    if(!getEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+    console.log(getEmployee);
+    const generateString = generateRandomAlphaNumeric(8);
+    const password = generatePassword(generateString);
+    const body = { password: password,isPasswordReset: false };
+    await Employee.findByIdAndUpdate(getEmployee._id, body, {
+      new: true,
+      runValidators: true,
+    });
+    employeeEmitter.emit("resetPasswordMessage", getEmployee.name, generateString, getEmployee.mobile);
+    employeeEmitter.emit("feedbackMessage", getEmployee.name, getEmployee.mobile);
+    res.status(200).json({ message: "Password reset message sent" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
 module.exports = {
   addEmployees,
   updateEmployee,
@@ -169,4 +201,5 @@ module.exports = {
   getSingleEmployee,
   getEmployeeByDesignation,
   toggleEmployeeStatus,
+  resetPasswordMessageEmployee,
 };
