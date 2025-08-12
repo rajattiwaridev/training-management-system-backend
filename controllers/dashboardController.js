@@ -103,17 +103,26 @@ const getTodayAndUpComingTrainings = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const upcomingTrainings = await Training.find({
-      date: { $gt: today },
+    const filter = {
       status: "scheduled",
+    };
+
+    // If "id" is present in query, filter by createdBy
+    if (req.query.id) {
+      filter.createdBy = req.query.id;
+    }
+
+    const upcomingTrainings = await Training.find({
+      ...filter,
+      date: { $gt: today },
     }).sort({ date: 1 });
 
     const todayTrainings = await Training.find({
+      ...filter,
       date: {
         $gte: today,
         $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
       },
-      status: "scheduled",
     })
       .sort({ date: 1 })
       .populate({

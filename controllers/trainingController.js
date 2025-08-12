@@ -4,7 +4,7 @@ const QRCode = require("qrcode");
 const fs = require("fs");
 const path = require("path");
 const TrainingAttendance = require("../models/TrainingAttendance");
-const trainingEmitter = require("../emitter/eventEmitter");
+const { trainingEmitter } = require("../emitter/eventEmitter");
 
 const createTraining = async (req, res) => {
   try {
@@ -220,12 +220,13 @@ const updateTrainingStatus = async (req, res) => {
       const photoPaths = files.map(
         (file) => `/uploads/trainings/${file.filename}`
       );
-
+	console.log(photoPaths);
       // Update training with completion data
       training.status = status;
       training.attendanceCount = Number(attendanceCount);
       training.photos = photoPaths;
       training.completedAt = new Date();
+	console.log(training);
 
       trainingEmitter.emit("trainingCompleted", training._id);
       await training.save();
