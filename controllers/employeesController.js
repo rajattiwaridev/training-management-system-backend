@@ -172,13 +172,10 @@ const toggleEmployeeStatus = async (req, res) => {
 const resetPasswordMessageEmployee = async (req,res) => {
   try {
     const id  = req.params.id;
-    console.log(id);
     const getEmployee = await Employee.findById(id);
-    console.log(getEmployee);
     if(!getEmployee) {
       return res.status(404).json({ message: "Employee not found" });
     }
-    console.log(getEmployee);
     const generateString = generateRandomAlphaNumeric(8);
     const password = generatePassword(generateString);
     const body = { password: password,isPasswordReset: false };
@@ -187,7 +184,6 @@ const resetPasswordMessageEmployee = async (req,res) => {
       runValidators: true,
     });
     employeeEmitter.emit("resetPasswordMessage", getEmployee.name, generateString, getEmployee.mobile);
-    employeeEmitter.emit("feedbackMessage", getEmployee.name, getEmployee.mobile);
     res.status(200).json({ message: "Password reset message sent" });
   } catch (error) {
     res.status(500).json({ message: error.message });
