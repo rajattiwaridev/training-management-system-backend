@@ -131,6 +131,23 @@ const getTrainings = async (req, res) => {
 // Get a single training by ID
 const getTraining = async (req, res) => {
   try {
+    if (req.query.type === "Today") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const trainings = await Training.find({
+        createdBy: (await employees.findOne({ mobile: req.params.id }))._id,
+        status: "scheduled",
+        date: { $gte: today, $lt: tomorrow },
+      });
+      if (!trainings || trainings.length === 0) {
+        res.status(404);
+        throw new Error("No trainings found for today");
+      }
+      return res.json(trainings);
+    }
     const getEmployees = await employees.findOne({ mobile: req.params.id });
     const training = await Training.find({ createdBy: getEmployees._id });
     if (!training) {
@@ -290,14 +307,13 @@ const getDRMTrainings = async (req, res) => {
 //Traininig Attendance
 const addAttendance = async (req, res) => {
   try {
-    const checkTrainingIsCompleted = await Training.findOne({
+    const checkTraining = await Training.findOne({
       _id: req.body.trainingId,
       status: "scheduled",
     });
-    if (checkTrainingIsCompleted) {
+    if (checkTraining) {
       const checkAttendanceExists = await TrainingAttendance.find({
         trainingId: req.body.trainingId,
-        name: req.body.name,
         mobile: req.body.mobile,
       });
       if (checkAttendanceExists.length > 0) {

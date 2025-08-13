@@ -32,3 +32,17 @@ exports.checkFeedbackStatus = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+
+exports.getFeedbacksByTrainingId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const feedbacks = await feedback.find({ trainingId: id }).populate("trainingId");
+    if (!feedbacks || feedbacks.length === 0) {
+      return res.status(404).json({ message: "No feedbacks found for this training" });
+    }
+    res.status(200).json(feedbacks);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+}
