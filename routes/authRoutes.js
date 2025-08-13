@@ -67,7 +67,7 @@ const {
   getTodayAndUpComingTrainings,
   getEmployeesByLocation,
 } = require("../controllers/dashboardController");
-const { updateFeedbackStatus, checkFeedbackStatus } = require("../controllers/feedBackController");
+const { updateFeedbackStatus, checkFeedbackStatus, getFeedbacksByTrainingId } = require("../controllers/feedBackController");
 
 const router = express.Router();
 
@@ -212,7 +212,7 @@ router.post("/training/attendance", addAttendance);
 router.get("/training/attendance/:id", authMiddleware, getTrainingAttendance);
 router.post("/training/feedback", updateFeedbackStatus);
 router.get("/training/feedback-status", checkFeedbackStatus);
-
+router.get("/feedbacks/training/:id", getFeedbacksByTrainingId);
 //Dashboard API's
 router.get("/get-allcounts/:id", authMiddleware, getAllCounts);
 router.get(

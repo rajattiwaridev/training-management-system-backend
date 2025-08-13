@@ -20,7 +20,7 @@ trainingEmitter.on("trainingCompleted", async (trainingId) => {
     }
     const baseUrl = "https://smsgw.sms.gov.in/failsafe/MLink";
     for (const attendance of getTrainingAttendance) {
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = crypto.randomBytes(3).toString("hex").slice(0, 3);
       const expiration = new Date();
       expiration.setDate(expiration.getDate() + 7);
       const feedbackUrl = `cgtransport.gov.in/training/feedback?token=${token}`;
