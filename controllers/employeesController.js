@@ -37,7 +37,11 @@ const addEmployees = async (req, res) => {
       .populate("division", "name")
       .populate("district", "districtNameEng");
     // Emit an event for employee registration
-    employeeEmitter.emit("employeeRegisterationMessage", employee, generateString);
+    employeeEmitter.emit(
+      "employeeRegisterationMessage",
+      employee,
+      generateString
+    );
     res.status(201).json(employee);
   } catch (error) {
     if (error.code === 11000) {
@@ -169,26 +173,51 @@ const toggleEmployeeStatus = async (req, res) => {
   }
 };
 
-const resetPasswordMessageEmployee = async (req,res) => {
+const resetPasswordMessageEmployee = async (req, res) => {
   try {
-    const id  = req.params.id;
+    const id = req.params.id;
     const getEmployee = await Employee.findById(id);
-    if(!getEmployee) {
+    if (!getEmployee) {
       return res.status(404).json({ message: "Employee not found" });
     }
     const generateString = generateRandomAlphaNumeric(8);
     const password = generatePassword(generateString);
-    const body = { password: password,isPasswordReset: false };
+    const body = { password: password, isPasswordReset: false };
     await Employee.findByIdAndUpdate(getEmployee._id, body, {
       new: true,
       runValidators: true,
     });
-    employeeEmitter.emit("resetPasswordMessage", getEmployee.name, generateString, getEmployee.mobile);
+    employeeEmitter.emit(
+      "resetPasswordMessage",
+      getEmployee.name,
+      generateString,
+      getEmployee.mobile
+    );
     res.status(200).json({ message: "Password reset message sent" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-}
+};
+
+const changePasswordMessageEmployee = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { newPassword } = req.body;
+    const getEmployee = await Employee.findById(id);
+    if (!getEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+    const password = generatePassword(newPassword);
+    const body = { password: password, isPasswordReset: true };
+    await Employee.findByIdAndUpdate(getEmployee._id, body, {
+      new: true,
+      runValidators: true,
+    });
+    res.status(200).json({ message: "Password changed message sent" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   addEmployees,
@@ -198,4 +227,5 @@ module.exports = {
   getEmployeeByDesignation,
   toggleEmployeeStatus,
   resetPasswordMessageEmployee,
+  changePasswordMessageEmployee,
 };
