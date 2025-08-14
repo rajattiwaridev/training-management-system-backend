@@ -1,10 +1,12 @@
 const employees = require("../models/employees");
 const Training = require("../models/Training");
 const QRCode = require("qrcode");
+const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
 const TrainingAttendance = require("../models/TrainingAttendance");
 const { trainingEmitter } = require("../emitter/eventEmitter");
+const Feedback = require("../models/Feedback");
 
 const createTraining = async (req, res) => {
   try {
@@ -77,23 +79,61 @@ const createTraining = async (req, res) => {
     // Generate tiny links and QR codes for each training
     const trainingsWithQR = await Promise.all(
       created.map(async (training) => {
-        const baseUrl = "https://cgtransport.gov.in/training/attendance";
-        const tinyLink = `${baseUrl}?trainingId=${training._id}`;
-        const sanitizedTitle = training.title.replace(/[^a-zA-Z0-9]/g, "_");
-        const fileName = `${sanitizedTitle}_${training._id}.png`;
-        const filePath = path.join(qrCodeDir, fileName);
-        await QRCode.toFile(filePath, tinyLink);
-        const relativePath = `uploads/qrCodes/${fileName}`;
-        const updatedTraining = await Training.findByIdAndUpdate(
-          training._id,
-          {
-            attendanceLink: tinyLink,
-            qrCodeImg: relativePath,
-          },
-          { new: true }
-        );
+        try {
+          const baseUrl = "https://cgtransport.gov.in/training/attendance";
+          const tinyLink = `${baseUrl}?trainingId=${training._id}`;
+          const sanitizedTitle = training.title.replace(/[^a-zA-Z0-9]/g, "_");
+          const fileName = `${sanitizedTitle}_${training._id}.png`;
+          const filePath = path.join(qrCodeDir, fileName);
+          const logoPath = path.join(__dirname, "../logo/niclogo.png");
 
-        return updatedTraining;
+          // 1. First generate QR code to buffer
+          const qrBuffer = await QRCode.toBuffer(tinyLink, {
+            color: {
+              dark: "#000000",
+              light: "#ffffff",
+            },
+            width: 1000, // Larger size for better quality
+            margin: 2,
+            errorCorrectionLevel: "H",
+          });
+
+          // 2. Load and resize logo
+          const logoBuffer = await sharp(logoPath)
+            .resize(200, 200) // Logo size (20% of 1000px)
+            .toBuffer();
+
+          // 3. Composite QR code and logo
+          await sharp(qrBuffer)
+            .composite([
+              {
+                input: logoBuffer,
+                blend: "over",
+                top: 400, // Center vertically (1000/2 - 200/2)
+                left: 400, // Center horizontally
+              },
+            ])
+            .png()
+            .toFile(filePath);
+
+          const relativePath = `uploads/qrCodes/${fileName}`;
+          const updatedTraining = await Training.findByIdAndUpdate(
+            training._id,
+            {
+              attendanceLink: tinyLink,
+              qrCodeImg: relativePath,
+            },
+            { new: true }
+          );
+
+          return updatedTraining;
+        } catch (error) {
+          console.error(
+            `Error generating QR for training ${training._id}:`,
+            error
+          );
+          throw error; // Or handle gracefully
+        }
       })
     );
 
@@ -150,11 +190,26 @@ const getTraining = async (req, res) => {
     }
     const getEmployees = await employees.findOne({ mobile: req.params.id });
     const training = await Training.find({ createdBy: getEmployees._id });
-    if (!training) {
+    if (!training || training.length === 0) {
       res.status(404);
       throw new Error("Training not found");
     }
-    res.json(training);
+
+    // Get feedback counts for each training
+    const trainingWithFeedbackCounts = await Promise.all(
+      training.map(async (t) => {
+        const feedbackCount = await Feedback.countDocuments({
+          trainingId: t._id,
+        });
+        return {
+          ...t.toObject(),
+          feedbackCount,
+        };
+      })
+    );
+
+    res.status(200).json(trainingWithFeedbackCounts);
+    // res.json(training);
   } catch (error) {
     res.status(res.statusCode === 200 ? 500 : res.statusCode);
     res.json({ message: error.message });
@@ -237,13 +292,13 @@ const updateTrainingStatus = async (req, res) => {
       const photoPaths = files.map(
         (file) => `/uploads/trainings/${file.filename}`
       );
-	console.log(photoPaths);
+      console.log(photoPaths);
       // Update training with completion data
       training.status = status;
       training.attendanceCount = Number(attendanceCount);
       training.photos = photoPaths;
       training.completedAt = new Date();
-	console.log(training);
+      console.log(training);
 
       trainingEmitter.emit("trainingCompleted", training._id);
       await training.save();

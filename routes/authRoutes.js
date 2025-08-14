@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require('fs');
+const fs = require("fs");
 const {
   registerUser,
   loginUser,
@@ -45,6 +45,7 @@ const {
   getEmployeeByDesignation,
   toggleEmployeeStatus,
   resetPasswordMessageEmployee,
+  changePasswordMessageEmployee,
 } = require("../controllers/employeesController");
 const {
   addState,
@@ -67,7 +68,11 @@ const {
   getTodayAndUpComingTrainings,
   getEmployeesByLocation,
 } = require("../controllers/dashboardController");
-const { updateFeedbackStatus, checkFeedbackStatus, getFeedbacksByTrainingId } = require("../controllers/feedBackController");
+const {
+  updateFeedbackStatus,
+  checkFeedbackStatus,
+  getFeedbacksByTrainingId,
+} = require("../controllers/feedBackController");
 
 const router = express.Router();
 
@@ -170,7 +175,12 @@ router.get(
   getEmployeeByDesignation
 );
 router.get("/employees/status/:id", authMiddleware, toggleEmployeeStatus);
-router.get("/employees/reset-password/:id", authMiddleware, resetPasswordMessageEmployee);
+router.get(
+  "/employees/reset-password/:id",
+  authMiddleware,
+  resetPasswordMessageEmployee
+);
+router.post("/employees/:id/reset-password", authMiddleware, changePasswordMessageEmployee);
 
 //Training Routes
 router.post("/trainings/:id", authMiddleware, createTraining);
